@@ -1,0 +1,298 @@
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ko-fi Shop</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Forum&display=swap');
+
+body {
+  margin: 0px;
+  padding: 0px;
+}
+
+.kofi-shop-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.kofi-shop-item {
+  box-sizing: border-box;
+  position: relative;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  background-color: #191919;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.kofi-shop-item:not(.sold-out):hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.kofi-shop-item img {
+  width: 100%;
+  aspect-ratio: 5/8;
+  object-fit: cover;
+  transition: transform 0.2s;
+  object-position: 25% 50%;
+}
+
+.kofi-shop-item.sold-out img {
+  width: 100%;
+  aspect-ratio: 5/8;
+  object-fit: cover;
+  transition: transform 0.2s;
+  object-position: 25% 50%;
+}
+
+.kofi-shop-item.sold-out::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.kofi-shop-info {
+  padding: 20px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.kofi-shop-info p,
+.kofi-shop-info a,
+.error-message,
+.kofi-shop-load-more {
+  font-family: Forum, sans-serif !important;
+  color: #ccc;
+  font-size: 1.1rem;
+}
+
+.kofi-shop-info p:nth-child(2) {
+  order: 3;
+  font-size: 15px;
+}
+
+.kofi-shop-info p:nth-child(3) {
+  order: 2;
+}
+
+.kofi-shop-info p:nth-child(4) {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-weight: bold;
+  padding: 5px;
+  border-radius: 10px;
+}
+
+.kofi-shop-info a {
+  order: 4;
+  text-align: center;
+  display: block;
+  padding: 10px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  margin-top: auto;
+  color: #282828;
+}
+
+.available {
+  color: #ccc;
+}
+
+.kofi-shop-info a:hover {
+  background-color: #be002c;
+  color: #ccc;
+}
+
+.buy-button {
+  background-color: #ccc;
+  color: #282828;
+  width: 90%;
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  font-family: Forum, serif;
+  font-size: 1.1rem;
+  transition: background-color 0.2s;
+  margin-top: -20px;
+  display: block;
+}
+
+.buy-button.sold-out {
+  background-color: #282828;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.kofi-credit {
+  text-align: center;
+  margin-top: 20px;
+  font-family: Forum, serif;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.kofi-credit a {
+  color: #be002c;
+  text-decoration: none;
+}
+
+@media (max-width: 500px) {
+  .kofi-shop-container {
+    grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
+  }
+}
+
+.error-message,
+.kofi-shop-load-more {
+  display: block;
+  text-align: center;
+  background-color: #be002c;
+  color: #ccc;
+  font-weight: bold;
+  padding: 5px 0px 5px 0px;
+  border-radius: 5px;
+}
+
+.products-container {
+  margin-bottom: 40px;
+}
+
+.products-container h2 {
+  font-family: Forum, sans-serif;
+  color: #ccc;
+  font-size: 1.5rem;
+  margin: 0px;
+}
+
+.products-container h3 {
+  font-family: Forum, sans-serif;
+  color: #ccc;
+  font-size: 1rem;
+  font-weight: 100;;
+  margin: 0px;
+  margin-bottom: 20px;
+}
+</style>
+</head>
+
+<body>
+  <div id="kofi-shop-embed" data-shop-id="I2I7W47CG" data-shop-soldout="show" data-shop-currency="$" data-shop-category="pre_madecover">
+    <!-- Sold Products Container -->
+    <div class="products-container">
+      <div id="sold-products" class="kofi-shop-container"></div>
+    </div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+  const embedDiv = document.getElementById('kofi-shop-embed');
+  if (!embedDiv) return console.error('Ko‑fi shop div not found');
+
+  const { shopId: pageId, shopCurrency: storeCurrency, shopSoldout: soldOutOption = 'show' } = embedDiv.dataset;
+  if (!pageId || !storeCurrency) return console.error('Missing required attributes: data-shop-id or data-shop-currency');
+
+  const CACHE_EXPIRY_MS = 300000; // 5 minutes
+  const filterText = 'pre-made';
+
+  const createElement = (tag, className) => Object.assign(document.createElement(tag), { className });
+
+  const lazyLoadImages = () => {
+    const lazyImages = document.querySelectorAll('.lazy');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          img.src = img.dataset.src;
+          observer.unobserve(img);
+        }
+      });
+    });
+
+    lazyImages.forEach((img) => observer.observe(img));
+  };
+
+  const renderProductCard = (product) => {
+    const card = createElement('div', `kofi-shop-item ${product.SoldOut ? 'sold-out' : ''}`);
+    card.innerHTML = `
+      <a href="${product.Link}" target="_blank" style="text-decoration: none; color: inherit;">
+        <img class="lazy" data-src="${product.Image}" alt="${product.Title}">
+      </a>
+      <div class="kofi-shop-info">
+        <p>${product.Title}</p>
+        <p>${product.Description.split('NOTE')[0].trim()}</p>
+        <a href="${product.Link}" target="_blank" class="buy-button ${product.SoldOut ? 'sold-out' : ''}" ${product.SoldOut ? 'disabled' : ''}>
+          ${product.SoldOut ? 'SOLD' : `Buy now for ${storeCurrency}${product.Price}`}
+        </a>
+      </div>
+    `;
+    return card;
+  };
+
+  const loadProducts = async () => {
+    const cacheKey = `ko-fi-shop-${pageId}`;
+    const cachedData = JSON.parse(localStorage.getItem(cacheKey)) || {};
+
+    // Use cached data if it's still valid
+    if (cachedData.timestamp && Date.now() - cachedData.timestamp < CACHE_EXPIRY_MS) {
+      console.log('Using cached data');
+      return cachedData.data;
+    }
+
+    // Fetch all products from the API
+    console.log('Fetching data from API');
+    const response = await fetch(`https://api.ko-fi.tools/shop?pageid=${pageId}`);
+    if (!response.ok) {
+      console.error('Failed to fetch products:', response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data }));
+    return data;
+  };
+
+  const availableProductsContainer = document.getElementById('available-products');
+  const soldProductsContainer = document.getElementById('sold-products');
+
+  // Load and render all products
+  const data = await loadProducts();
+  console.log('API Response:', data); // Debugging: Log the API response
+
+  if (!data || !data.length) {
+    console.error('No products found or API returned empty data');
+    return;
+  }
+
+  // Filter and render products
+  data
+    .filter(product => product.Title.toLowerCase().includes(filterText.toLowerCase()))
+    .forEach(product => {
+      if (soldOutOption === 'hide' && product.SoldOut) return;
+
+      const card = renderProductCard(product);
+      if (product.SoldOut) {
+        soldProductsContainer.appendChild(card);
+      } else {
+        availableProductsContainer.appendChild(card);
+      }
+    });
+
+  // Lazy load images
+  lazyLoadImages();
+
+  // Add Ko-fi credit
+  embedDiv.appendChild(createElement('div', 'kofi-credit')).innerHTML = 'Original code and powered by <a href="https://ko-fi.tools" target="_blank">Ko-fi.tools</a>';
+});
+</script>
+</body>
+</html>
