@@ -197,6 +197,7 @@ body {
 
   const renderProductCard = (product) => {
     const card = createElement('div', 'kofi-shop-item');
+    const buttonText = product.Price == 0 ? "Get it for free!" : `Buy now for ${storeCurrency}${product.Price}`;
     card.innerHTML = `
       <a href="${product.Link}" target="_blank" style="text-decoration: none; color: inherit;">
         <img class="lazy" data-src="${product.Image}" alt="${product.Title}">
@@ -205,12 +206,12 @@ body {
         <p>${product.Title}</p>
         <p>${product.Description.split('NOTE')[0].trim()}</p>
         <a href="${product.Link}" target="_blank" class="buy-button">
-          Buy now for ${storeCurrency}${product.Price}
+          ${buttonText}
         </a>
       </div>
     `;
     return card;
-  };
+};
 
   const loadProducts = async () => {
     const cacheKey = `ko-fi-shop-${pageId}`;
